@@ -92,13 +92,6 @@ legend("bottomright", legend=c(
 
 
 
-
-
-
-
-
-
-
 #Simulations 
 
 # PMF function with truncation at K
@@ -375,9 +368,6 @@ wnb_pmf <- function(x,m,r,p,K=120){
   pmax(sum(dnbinom(x + (0:K)*m, size=r, prob=p)),1e-12)
 }
 
-wnorm_pmf <- function(r,m,mu,sigma,K=30){
-  pmax(sum(dnorm(r + (-K:K)*m, mu, sigma)),1e-12)
-}
 
 dws_loglik <- function(params,data,m,K=100){
   rho<-params[1]; alpha<-params[2]; mu<-params[3]
@@ -409,11 +399,6 @@ wnb_loglik <- function(params,data,m){
   sum(safe_log(sapply(data,function(x)wnb_pmf(x,m,r,p))))
 }
 
-wnorm_loglik <- function(params,data,m){
-  mu<-params[1]; sigma<-params[2]
-  if(sigma<=0) return(-1e10)
-  sum(safe_log(sapply(data,function(r)wnorm_pmf(r,m,mu,sigma))))
-}
 
 fit_model <- function(loglik_fun,start,lower,upper,data,m,extra_args=list()){
 
