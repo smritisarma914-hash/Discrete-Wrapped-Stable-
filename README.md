@@ -1,2 +1,2 @@
-# Discrete-Wrapped-Stable-
+# Discrete-Wrapped-Stable
 discrete wrapped stable distribution
