@@ -1,4 +1,3 @@
-
 # Discrete Wrapped Stable PMF 
 
 wrapped_stable_pmf <- function( rho, alpha, mu) {
@@ -364,9 +363,6 @@ wb_pmf <- function(r,m,n,p){
   pmax(sum(dbinom(r+ks*m, n, p)),1e-12)
 }
 
-wnb_pmf <- function(x,m,r,p,K=120){
-  pmax(sum(dnbinom(x + (0:K)*m, size=r, prob=p)),1e-12)
-}
 
 
 dws_loglik <- function(params,data,m,K=100){
@@ -393,11 +389,6 @@ wb_loglik <- function(params,data,m,n){
   sum(safe_log(sapply(data,function(r)wb_pmf(r,m,n,p))))
 }
 
-wnb_loglik <- function(params,data,m){
-  r<-params[1]; p<-params[2]
-  if(r<=0||p<=0||p>=1) return(-1e10)
-  sum(safe_log(sapply(data,function(x)wnb_pmf(x,m,r,p))))
-}
 
 
 fit_model <- function(loglik_fun,start,lower,upper,data,m,extra_args=list()){
@@ -434,7 +425,6 @@ fit_dws <- fit_model(dws_loglik,c(0.3,1.2,1),c(1e-4,0.2,0),c(0.95,2,2*pi),data,m
 fit_wg  <- fit_model(wg_loglik,c(0.4),c(1e-4),c(0.95),data,m)
 fit_wp  <- fit_model(wp_loglik,c(mean(data)),c(1e-3),c(50),data,m)
 fit_wb  <- fit_model(wb_loglik,c(0.5),c(1e-4),c(0.95),data,m,list(n=30))
-fit_wnb <- fit_model(wnb_loglik,c(5,0.4),c(1e-3,1e-4),c(50,0.95),data,m)
 
 print(list(DWS=fit_dws, WG=fit_wg, WP=fit_wp,
-           WB=fit_wb, WNB=fit_wnb)
+           WB=fit_wb)
