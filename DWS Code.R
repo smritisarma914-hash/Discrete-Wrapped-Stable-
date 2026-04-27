@@ -350,56 +350,115 @@ dws_pmf <- function(r, m, rho, alpha, mu, K=100) {
   pmax((1 + 2*series)/m, 1e-12)
 }
 
-wg_pmf <- function(r,m,p){
-  pmax((p*(1-p)^r)/(1-(1-p)^m),1e-12)
+dwe_pmf <- function(r, lambda, m) {
+  theta <- 2*pi*r/m
+  num <- exp(-lambda*theta) * (1 - exp(-2*pi*lambda/m))
+  den <- (1 - exp(-2*pi*lambda))
+  pmax(num/den, 1e-12)
 }
 
-wp_pmf <- function(r,m,lambda,K=100){
-  pmax(sum(dpois(r + (0:K)*m, lambda)),1e-12)
+dvm_pmf <- function(j, kappa, mu, n, P=50) {
+  denom <- besselI(kappa, 0)
+  for (p in 1:P) {
+    denom <- denom + 2*besselI(n*p, kappa)*cos(n*p*mu)
+  }
+  num <- exp(kappa*cos(2*pi*j/n - mu))
+  pmax(num/(n*denom), 1e-12)
 }
 
-wb_pmf <- function(r,m,n,p){
+dc_pmf <- function(j, rho, mu, n) {
+  val <- (1 + 2*rho*cos(2*pi*j/n - mu))/n
+  pmax(val, 1e-12)
+}
+
+dwc_pmf <- function(j, rho, mu, n) {
+  num <- (1 - rho^2)*(1 + rho^(2*n) - 2*rho^n*cos(n*mu))
+  den <- n*(1 - rho^(2*n))*(1 + rho^2 - 2*rho*cos(2*pi*j/n - mu))
+  pmax(num/den, 1e-12)
+}
+
+wg_pmf <- function(r, m, p) {
+  pmax((p*(1-p)^r)/(1-(1-p)^m), 1e-12)
+}
+
+wp_pmf <- function(r, m, lambda, K=100) {
+  pmax(sum(dpois(r + (0:K)*m, lambda)), 1e-12)
+}
+
+wb_pmf <- function(r, m, n, p) {
   ks <- 0:floor(n/m)
-  pmax(sum(dbinom(r+ks*m, n, p)),1e-12)
+  pmax(sum(dbinom(r + ks*m, n, p)), 1e-12)
+}
+
+wnb_pmf <- function(x, m, r, p, K=120) {
+  pmax(sum(dnbinom(x + (0:K)*m, size=r, prob=p)), 1e-12)
 }
 
 
-
-dws_loglik <- function(params,data,m,K=100){
-  rho<-params[1]; alpha<-params[2]; mu<-params[3]
+dws_loglik <- function(par, data, m) {
+  rho<-par[1]; alpha<-par[2]; mu<-par[3]
   if(rho<=0||rho>=1||alpha<=0||alpha>2||mu<0||mu>2*pi) return(-1e10)
-  sum(safe_log(sapply(data,function(r)dws_pmf(r,m,rho,alpha,mu,K))))
+  sum(safe_log(sapply(data, dws_pmf, m=m, rho=rho, alpha=alpha, mu=mu)))
 }
 
-wg_loglik <- function(params,data,m){
-  p<-params[1]
-  if(p<=0||p>=1) return(-1e10)
-  sum(safe_log(sapply(data,function(r)wg_pmf(r,m,p))))
-}
-
-wp_loglik <- function(params,data,m){
-  lambda<-params[1]
+dwe_loglik <- function(par, data, m) {
+  lambda <- par[1]
   if(lambda<=0) return(-1e10)
-  sum(safe_log(sapply(data,function(r)wp_pmf(r,m,lambda))))
+  sum(safe_log(sapply(data, dwe_pmf, lambda=lambda, m=m)))
 }
 
-wb_loglik <- function(params,data,m,n){
-  p<-params[1]
+dvm_loglik <- function(par, data, m) {
+  kappa<-par[1]; mu<-par[2]
+  if(kappa<=0||mu<0||mu>2*pi) return(-1e10)
+  sum(safe_log(sapply(data, dvm_pmf, kappa=kappa, mu=mu, n=m)))
+}
+
+dc_loglik <- function(par, data, m) {
+  rho<-par[1]; mu<-par[2]
+  if(abs(rho)>=0.5||mu<0||mu>2*pi) return(-1e10)
+  sum(safe_log(sapply(data, dc_pmf, rho=rho, mu=mu, n=m)))
+}
+
+dwc_loglik <- function(par, data, m) {
+  rho<-par[1]; mu<-par[2]
+  if(rho<=0||rho>=1||mu<0||mu>2*pi) return(-1e10)
+  sum(safe_log(sapply(data, dwc_pmf, rho=rho, mu=mu, n=m)))
+}
+
+wg_loglik <- function(par, data, m) {
+  p<-par[1]
   if(p<=0||p>=1) return(-1e10)
-  sum(safe_log(sapply(data,function(r)wb_pmf(r,m,n,p))))
+  sum(safe_log(sapply(data, wg_pmf, m=m, p=p)))
+}
+
+wp_loglik <- function(par, data, m) {
+  lambda<-par[1]
+  if(lambda<=0) return(-1e10)
+  sum(safe_log(sapply(data, wp_pmf, m=m, lambda=lambda)))
+}
+
+wb_loglik <- function(par, data, m, n) {
+  p<-par[1]
+  if(p<=0||p>=1) return(-1e10)
+  sum(safe_log(sapply(data, wb_pmf, m=m, n=n, p=p)))
+}
+
+wnb_loglik <- function(par, data, m) {
+  r<-par[1]; p<-par[2]
+  if(r<=0||p<=0||p>=1) return(-1e10)
+  sum(safe_log(sapply(data, wnb_pmf, m=m, r=r, p=p)))
 }
 
 
+fit_model <- function(loglik_fun, start, lower, upper, data, m, extra_args=list()) {
 
-fit_model <- function(loglik_fun,start,lower,upper,data,m,extra_args=list()){
-
-  fn <- function(p){
-    val <- tryCatch({
-      ll <- do.call(loglik_fun,c(list(p,data,m),extra_args))
-      if(!is.finite(ll)) return(1e10)
-      -ll
-    }, error=function(e) 1e10)
-    val
+  fn <- function(p) {
+    ll <- tryCatch(
+      do.call(loglik_fun, c(list(p, data, m), extra_args)),
+      error=function(e) -1e10
+    )
+    if(!is.finite(ll)) ll <- -1e10
+    -ll
   }
 
   res <- optim(start, fn, method="L-BFGS-B",
@@ -407,24 +466,35 @@ fit_model <- function(loglik_fun,start,lower,upper,data,m,extra_args=list()){
 
   loglik <- -res$value
   k <- length(start)
+  n <- length(data)
 
   list(
-    params=res$par,
-    SE=get_se(res),
-    loglik=loglik,
-    AIC=-2*loglik+2*k,
-    BIC=-2*loglik+k*log(length(data))
+    params = res$par,
+    SE     = get_se(res),
+    loglik = loglik,
+    AIC    = -2*loglik + 2*k,
+    BIC    = -2*loglik + k*log(n)
   )
 }
 
-data <- c()
+data <-c()
 
 m <- 24
 
-fit_dws <- fit_model(dws_loglik,c(0.3,1.2,1),c(1e-4,0.2,0),c(0.95,2,2*pi),data,m)
-fit_wg  <- fit_model(wg_loglik,c(0.4),c(1e-4),c(0.95),data,m)
-fit_wp  <- fit_model(wp_loglik,c(mean(data)),c(1e-3),c(50),data,m)
-fit_wb  <- fit_model(wb_loglik,c(0.5),c(1e-4),c(0.95),data,m,list(n=30))
 
-print(list(DWS=fit_dws, WG=fit_wg, WP=fit_wp,
-           WB=fit_wb)
+fit_dws <- fit_model(dws_loglik, c(0.3,1.2,1), c(1e-4,0.2,0), c(0.95,2,2*pi), data, m)
+fit_dwe <- fit_model(dwe_loglik, c(0.8), c(1e-4), c(10), data, m)
+fit_dvm <- fit_model(dvm_loglik, c(2,1), c(1e-3,0), c(50,2*pi), data, m)
+fit_dc  <- fit_model(dc_loglik, c(0.3,1), c(-0.49,0), c(0.49,2*pi), data, m)
+fit_dwc <- fit_model(dwc_loglik, c(0.4,0.7), c(1e-4,0), c(0.95,2*pi), data, m)
+fit_wg  <- fit_model(wg_loglik, c(0.4), c(1e-4), c(0.95), data, m)
+fit_wp  <- fit_model(wp_loglik, c(mean(data)), c(1e-3), c(50), data, m)
+fit_wb  <- fit_model(wb_loglik, c(0.5), c(1e-4), c(0.95), data, m, list(n=30))
+fit_wnb <- fit_model(wnb_loglik, c(5,0.4), c(1e-3,1e-4), c(50,0.95), data, m)
+
+
+print(list(
+  DWS=fit_dws, DWE=fit_dwe, DVM=fit_dvm,
+  DC=fit_dc, DWC=fit_dwc,
+  WG=fit_wg, WP=fit_wp, WB=fit_wb, WNB=fit_wnb
+))
