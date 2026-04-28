@@ -260,81 +260,10 @@ legend("topright", legend = c("Observed", "DWS Pmf"),
        fill = c("lightblue", NA), border = c("black", NA),
        pch = c(NA,19), col = c("black","red"), lty = c(NA,1),cex=0.6)
 
-data <- read.csv("C:\\Users\\smrit\\OneDrive\\Desktop\\tezpur.csv")
-data_col5 <- data[[5]]
-cat("c(", paste(data_col5, collapse = ", "), ")", sep = "")
-
-mat <- rbind(obs_prob, pmf_vals)
-barplot(mat, beside = TRUE, names.arg = r_vals,
-        col = c("lightgreen", "Purple"),
-        main = "Observed vs Fitted DWS (Barplot)",
-        xlab = "Bin (r)", ylab = "Probability", cex.names=0.7)
-
-legend("topright", legend = c("Observed", "DWS PMF"),
-       fill = c("lightblue", "red"), border = "black", cex=0.7)
-
-
-dws_pmf <- function(r, m, rho, alpha, mu, K = 50) {
-  # r = 0,...,m-1
-  pmf <- numeric(length(r))
-  for (i in seq_along(r)) {
-    sum_term <- 0
-    for (k in 1:K) {
-      sum_term <- sum_term + rho^(k^alpha) * cos(k * (2*pi*r[i]/m - mu))
-    }
-    pmf[i] <- (1 + 2*sum_term) / m
-  }
-  return(pmf)
-}
-
-data <- c()
-# Convert degrees into discrete bins (0–360 in steps of 10)
-m <- 36   # since bins of 10 degrees
-r_data <- floor(data / 10) %% m
-
-obs_freq <- table(factor(r_data, levels = 0:(m-1)))
-obs_prob <- obs_freq / sum(obs_freq)
-
-rho   <- 0.7
-alpha <- 1.2
-mu    <- 0
-
-# Theoretical pmf
-r_vals <- 0:(m-1)
-pmf_vals <- dws_pmf(r_vals, m, rho, alpha, mu)
-
-barplot(obs_prob, names.arg = r_vals, col = "lightblue",
-        main = "Observed Histogram vs DWS PMF",
-        xlab = "Bin (r)", ylab = "Probability")
-
-points(r_vals, pmf_vals, col = "red", pch = 19, type = "b", lwd = 2)
-legend("topright", legend = c("Observed", "DWS Pmf"),
-       fill = c("lightblue", NA), border = c("black", NA),
-       pch = c(NA,19), col = c("black","red"), lty = c(NA,1),cex=0.6)
-
-
-# Read CSV
-data <- read.csv("C:\\Users\\smrit\\OneDrive\\Desktop\\tezpur.csv")
-
-# Select the 5th column as a vector
-data_col5 <- data[[5]]
-
-cat("c(", paste(data_col5, collapse = ", "), ")", sep = "")
-
-
-mat <- rbind(obs_prob, pmf_vals)
-
-# Side-by-side barplot
-barplot(mat, beside = TRUE, names.arg = r_vals,
-        col = c("lightgreen", "Purple"),
-        main = "Observed vs Fitted DWS (Barplot)",
-        xlab = "Bin (r)", ylab = "Probability", cex.names=0.7)
-
-legend("topright", legend = c("Observed", "DWS PMF"),
-       fill = c("lightblue", "red"), border = "black", cex=0.7)
 
 
 
+                             
 
 
 #AIC, BIC
