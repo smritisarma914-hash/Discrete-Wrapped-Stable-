@@ -1,65 +1,79 @@
 # Discrete Wrapped Stable PMF 
 
-wrapped_stable_pmf <- function( rho, alpha, mu) {
-  r_values <- 0:(m-1)
+wrapped_stable_pmf <- function(m, rho, alpha, mu, K = 100) {
+  r_values <- 0:(m - 1)
+
   pmf <- sapply(r_values, function(r) {
-    sum_term <- sum(sapply(1:infinity, function(k) {
-      rho^(k^alpha) * cos(k * (2 * pi * r / m - mu))
-    }))
+    k <- 1:K
+    sum_term <- sum(rho^(k^alpha) * cos(k * (2 * pi * r / m - mu)))
     pw <- (1 + 2 * sum_term) / m
-    return(pw)
+    pmax(pw, 1e-12)   # ensure non-negative
   })
-  # Normalize due to finite P
+
+  # Normalize (important due to truncation)
   pmf <- pmf / sum(pmf)
+
   return(list(r = r_values, prob = pmf))
 }
 
-# Set up layout for 3x3 grid of PMF plots
-par(mfrow = c(3, 3), mar = c(3.5, 3.5, 1))
+
+m <- 36   
+
+par(mfrow = c(3, 3), mar = c(3.5, 3.5, 2, 1))
 
 param_list <- list(
   list(rho = 0.2, alpha = 0.3,  mu = 0.7),
   list(rho = 0.8, alpha = 0.5,  mu = 1.1),
   list(rho = 0.6, alpha = 0.4,  mu = 0.5),
-  list(rho = 0.5, alpha = 0.5, mu = 3.0),
-  list(rho = 0.5, alpha = 1.5, mu = 1.0),
-  list(rho = 0.8, alpha = 0.3, mu = 2.0),
+  list(rho = 0.5, alpha = 0.5,  mu = 3.0),
+  list(rho = 0.5, alpha = 1.5,  mu = 1.0),
+  list(rho = 0.8, alpha = 0.3,  mu = 2.0),
   list(rho = 0.9, alpha = 2.0,  mu = 1.2),
-  list(rho = 0.4, alpha = 1.8, mu = 0.5),
-  list(rho = 0.7, alpha = 0.7, mu = 1.5)
+  list(rho = 0.4, alpha = 1.8,  mu = 0.5),
+  list(rho = 0.7, alpha = 0.7,  mu = 1.5)
 )
 
-# Loop through each parameter set and plot the PMF
 for (params in param_list) {
-  res <- wrapped_stable_pmf( 
-                            rho = params$rho, 
-                            alpha = params$alpha, 
-                            mu = params$mu)
-  barplot(res$prob, names.arg = res$r, col = "blue",
-          xlab = "y", ylab = "pmf",
-          main = bquote(rho == .(params$rho) ~ 
-                        alpha == .(params$alpha) ~ 
-                        mu == .(params$mu)))
+  res <- wrapped_stable_pmf(
+    m = m,
+    rho = params$rho,
+    alpha = params$alpha,
+    mu = params$mu
+  )
+
+  barplot(res$prob,
+          names.arg = res$r,
+          col = "lightblue",
+          xlab = "r",
+          ylab = "PMF",
+          main = bquote(rho == .(params$rho) ~
+                        alpha == .(params$alpha) ~
+                        mu == .(round(params$mu,2))))
 }
 
 
 
 
-# Function to compute DWS CDF
+# DWS CDF function plot
 
-dws_cdf <- function(m, q, rho, alpha, mu, P = 50) {
+dws_cdf <- function(m, q, rho, alpha, mu, K = 100) {
+
+  k <- 1:K
   term1 <- (q + 1) / m
-  term2 <- 0
-  for (k in 1:P) {
-    term2 <- term2 + rho^(k^alpha) * sum(cos(k * (2 * pi * (0:q) / m - mu)))
-  }
+
+  term2 <- sum(sapply(k, function(kk) {
+    rho^(kk^alpha) * sum(cos(kk * (2 * pi * (0:q) / m - mu)))
+  }))
+
   cdf_val <- term1 + (2 / m) * term2
+
+  # Numerical correction: keep in [0,1]
+  cdf_val <- min(max(cdf_val, 0), 1)
+
   return(cdf_val)
 }
 
-# Parameters
-m <- 36
-P <- 50  # truncation for k-sum
+
 param_list <- list(
   list(rho=0.5, alpha=0.4, mu=0.2),
   list(rho=0.5, alpha=0.6, mu=0.4),
@@ -67,27 +81,29 @@ param_list <- list(
   list(rho=0.5, alpha=0.5, mu=1.1)
 )
 
-# Values of q (0 to m-1)
 q_vals <- 0:(m-1)
 
-# Compute CDFs for each parameter set
 cdf_results <- lapply(param_list, function(par) {
-  sapply(q_vals, function(q) dws_cdf(m, q, par$rho, par$alpha, par$mu, P))
+  sapply(q_vals, function(q)
+    dws_cdf(m, q, par$rho, par$alpha, par$mu))
 })
 
-# Plot
 plot(q_vals, cdf_results[[1]], type="s", col=4, ylim=c(0,1),
-     xlab="q", ylab="CDF F_w(theta)",
+     xlab="q", ylab="CDF",
      main="CDF of Discrete Wrapped Stable Distribution")
+
 lines(q_vals, cdf_results[[2]], type="s", col=2)
 lines(q_vals, cdf_results[[3]], type="s", col=3)
 lines(q_vals, cdf_results[[4]], type="s", col=1)
+
 legend("bottomright", legend=c(
   expression(rho==0.5~alpha==0.4~mu==0.2),
   expression(rho==0.5~alpha==0.6~mu==0.4),
   expression(rho==0.5~alpha==0.4~mu==0.3),
   expression(rho==0.5~alpha==0.5~mu==1.1)
-), col=1:4, lty=3)
+), col=1:4, lty=1, cex=0.8)
+
+
 
 
 
@@ -357,15 +373,6 @@ dwe_pmf <- function(r, lambda, m) {
   pmax(num/den, 1e-12)
 }
 
-dvm_pmf <- function(j, kappa, mu, n, P=50) {
-  denom <- besselI(kappa, 0)
-  for (p in 1:P) {
-    denom <- denom + 2*besselI(n*p, kappa)*cos(n*p*mu)
-  }
-  num <- exp(kappa*cos(2*pi*j/n - mu))
-  pmax(num/(n*denom), 1e-12)
-}
-
 dc_pmf <- function(j, rho, mu, n) {
   val <- (1 + 2*rho*cos(2*pi*j/n - mu))/n
   pmax(val, 1e-12)
@@ -390,10 +397,6 @@ wb_pmf <- function(r, m, n, p) {
   pmax(sum(dbinom(r + ks*m, n, p)), 1e-12)
 }
 
-wnb_pmf <- function(x, m, r, p, K=120) {
-  pmax(sum(dnbinom(x + (0:K)*m, size=r, prob=p)), 1e-12)
-}
-
 
 dws_loglik <- function(par, data, m) {
   rho<-par[1]; alpha<-par[2]; mu<-par[3]
@@ -407,11 +410,6 @@ dwe_loglik <- function(par, data, m) {
   sum(safe_log(sapply(data, dwe_pmf, lambda=lambda, m=m)))
 }
 
-dvm_loglik <- function(par, data, m) {
-  kappa<-par[1]; mu<-par[2]
-  if(kappa<=0||mu<0||mu>2*pi) return(-1e10)
-  sum(safe_log(sapply(data, dvm_pmf, kappa=kappa, mu=mu, n=m)))
-}
 
 dc_loglik <- function(par, data, m) {
   rho<-par[1]; mu<-par[2]
@@ -441,12 +439,6 @@ wb_loglik <- function(par, data, m, n) {
   p<-par[1]
   if(p<=0||p>=1) return(-1e10)
   sum(safe_log(sapply(data, wb_pmf, m=m, n=n, p=p)))
-}
-
-wnb_loglik <- function(par, data, m) {
-  r<-par[1]; p<-par[2]
-  if(r<=0||p<=0||p>=1) return(-1e10)
-  sum(safe_log(sapply(data, wnb_pmf, m=m, r=r, p=p)))
 }
 
 
@@ -484,17 +476,16 @@ m <- 24
 
 fit_dws <- fit_model(dws_loglik, c(0.3,1.2,1), c(1e-4,0.2,0), c(0.95,2,2*pi), data, m)
 fit_dwe <- fit_model(dwe_loglik, c(0.8), c(1e-4), c(10), data, m)
-fit_dvm <- fit_model(dvm_loglik, c(2,1), c(1e-3,0), c(50,2*pi), data, m)
 fit_dc  <- fit_model(dc_loglik, c(0.3,1), c(-0.49,0), c(0.49,2*pi), data, m)
 fit_dwc <- fit_model(dwc_loglik, c(0.4,0.7), c(1e-4,0), c(0.95,2*pi), data, m)
 fit_wg  <- fit_model(wg_loglik, c(0.4), c(1e-4), c(0.95), data, m)
 fit_wp  <- fit_model(wp_loglik, c(mean(data)), c(1e-3), c(50), data, m)
 fit_wb  <- fit_model(wb_loglik, c(0.5), c(1e-4), c(0.95), data, m, list(n=30))
-fit_wnb <- fit_model(wnb_loglik, c(5,0.4), c(1e-3,1e-4), c(50,0.95), data, m)
+
 
 
 print(list(
-  DWS=fit_dws, DWE=fit_dwe, DVM=fit_dvm,
+  DWS=fit_dws, DWE=fit_dwe,
   DC=fit_dc, DWC=fit_dwc,
-  WG=fit_wg, WP=fit_wp, WB=fit_wb, WNB=fit_wnb
+  WG=fit_wg, WP=fit_wp, WB=fit_wb
 ))
